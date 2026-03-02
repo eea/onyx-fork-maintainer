@@ -10,7 +10,7 @@ if SCRIPT_DIR not in sys.path:
 
 from eea_merge_utils import (
     load_state, save_state, run_cmd, run_gemini, VENV_PYTHON, ensure_venv,
-    save_prompt, log_validation, load_prompt_template
+    save_prompt, log_validation, load_prompt_template, ARTIFACTS_DIR
 )
 
 MAX_RETRIES = {
@@ -108,7 +108,7 @@ def resolve_file(filepath, state_entry, patches_content, model):
     # Build patch context
     patch_id = state_entry.get("patch_id")
     if patch_id:
-        patch_file = os.path.join("eea-artifacts", "patches", f"{patch_id}.md")
+        patch_file = os.path.join(ARTIFACTS_DIR, "patches", f"{patch_id}.md")
         if os.path.exists(patch_file):
             with open(patch_file, "r") as pf:
                 patch_details = pf.read()
@@ -374,7 +374,7 @@ def main():
         print("No state found. Did Phase 1 run correctly?")
         sys.exit(1)
 
-    patch_doc_path = "eea-artifacts/patches-overview.md"
+    patch_doc_path = os.path.join(ARTIFACTS_DIR, "patches-overview.md")
     patches_content = ""
     if os.path.exists(patch_doc_path):
         with open(patch_doc_path, "r") as f:

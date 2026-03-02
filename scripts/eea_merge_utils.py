@@ -10,6 +10,16 @@ LOGS_DIR = ".eea_merge/logs"
 PROMPTS_DIR = ".eea_merge/prompts"
 VENV_PYTHON = os.path.join(TOOLS_DIR, "python_env", "bin", "python")
 
+# The root of the maintainer repository (where patches-overview.md lives)
+# is one level up from the scripts/ directory.
+ARTIFACTS_DIR = os.path.dirname(os.path.abspath(__file__))
+# Check if eea-artifacts exists as a directory (it might be a symlink)
+if os.path.exists("eea-artifacts") and os.path.isdir("eea-artifacts"):
+    ARTIFACTS_DIR = os.path.abspath("eea-artifacts")
+else:
+    # If eea-artifacts is not in CWD, assume it is the parent of the script
+    ARTIFACTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def ensure_venv():
     """Phase -1: Environment Bootstrap — isolated Python venv with pinned tools."""

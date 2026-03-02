@@ -70,17 +70,12 @@ git config remote.onyx.tagOpt --no-tags
 echo "Fetching ONLY the target tag $TARGET_TAG from onyx..."
 git fetch onyx "tag" "$TARGET_TAG" --no-recurse-submodules --force
 
-echo "Linking maintainer scripts to $TARGET_DIR/eea-artifacts..."
-# Create a symlink so the merge scripts can be called as eea-artifacts/scripts/...
-ln -s "$MAINTAINER_DIR" "eea-artifacts"
-
 echo ""
 echo "Bootstrap complete!"
 echo "Target directory: $TARGET_DIR"
 echo "Target Onyx tag: $TARGET_TAG"
 echo "Main branch: $MAIN_BRANCH"
-echo "Maintainer scripts linked at: $TARGET_DIR/eea-artifacts"
 echo ""
 echo "To start the merge process, run:"
 echo "  cd $TARGET_DIR"
-echo "  python3 eea-artifacts/scripts/eea_merge_master.py $TARGET_TAG"
+echo "  python3 ../scripts/eea_merge_master.py $TARGET_TAG"

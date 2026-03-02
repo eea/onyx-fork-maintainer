@@ -10,7 +10,7 @@ if SCRIPT_DIR not in sys.path:
 
 from eea_merge_utils import (
     run_cmd, get_unmerged_files, get_git_status, is_binary, save_state, run_gemini,
-    load_prompt_template, save_prompt
+    load_prompt_template, save_prompt, ARTIFACTS_DIR
 )
 
 SPECIAL_FILES = [
@@ -78,7 +78,7 @@ def map_files_to_patches(ai_files, model):
     if not ai_files:
         return {}
 
-    patch_doc_path = "eea-artifacts/patches-overview.md"
+    patch_doc_path = os.path.join(ARTIFACTS_DIR, "patches-overview.md")
     patch_content = ""
     if os.path.exists(patch_doc_path):
         with open(patch_doc_path, "r") as f:
