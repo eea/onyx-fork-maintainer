@@ -15,28 +15,60 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Get the root directory of the current maintainer repository
 MAINTAINER_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Cloning EEA fork from $EEA_REPO into $TARGET_DIR..."
+TARGET_TAG=$1
+
+if [ -z "$TARGET_TAG" ]; then
+    echo "No Onyx tag provided. Fetching latest releases from onyx-dot-app/onyx..."
+    
+    # Try to use gh CLI to get the latest releases
+    if command -v gh >/dev/null 2>&1; then
+        TAGS=$(gh release list --repo onyx-dot-app/onyx --limit 10 | awk '{print $1}')
+    fi
+
+    # Fallback to git ls-remote if gh failed or returned nothing
+    if [ -z "$TAGS" ]; then
+        echo "Warning: Could not fetch releases using 'gh'. Falling back to git ls-remote (this may be slower)..."
+        TAGS=$(git ls-remote --tags --sort='-v:refname' "$ONYX_REPO" | awk -F'/' '{print $3}' | grep -v "\^{}" | head -n 10)
+    fi
+
+    if [ -z "$TAGS" ]; then
+        echo "Error: Could not retrieve tags from $ONYX_REPO."
+        exit 1
+    fi
+
+    echo "Available Onyx tags:"
+    select TAG in $TAGS; do
+        if [ -n "$TAG" ]; then
+            TARGET_TAG=$TAG
+            break
+        fi
+    done
+    
+    if [ -z "$TARGET_TAG" ]; then
+        echo "Error: No tag selected."
+        exit 1
+    fi
+fi
+
+echo "Selected Onyx target tag: $TARGET_TAG"
+
+echo "Cloning EEA fork (branch: $MAIN_BRANCH) from $EEA_REPO into $TARGET_DIR..."
 if [ -d "$TARGET_DIR" ]; then
-    echo "Error: Directory $TARGET_DIR already exists."
+    echo "Error: Directory $TARGET_DIR already exists. Please remove it first if you want a clean bootstrap."
     exit 1
 fi
 
-git clone "$EEA_REPO" "$TARGET_DIR"
+# Optimized clone: single branch, no tags from origin yet
+git clone --single-branch --branch "$MAIN_BRANCH" --no-tags "$EEA_REPO" "$TARGET_DIR"
 cd "$TARGET_DIR"
 
-echo "Checking out main branch: $MAIN_BRANCH..."
-git checkout "$MAIN_BRANCH"
-
 echo "Adding upstream Onyx repository as 'onyx': $ONYX_REPO..."
-# We use 'onyx' as the remote name for the upstream to be compatible with merge scripts.
 git remote add onyx "$ONYX_REPO"
-
-echo "Fetching tags from upstream (without fetching all branches)..."
-# We fetch tags so they are available for merging.
-# To avoid fetching all branches, we use --no-tags in the remote config and fetch tags explicitly.
-# We use --force to overwrite any conflicting tags (e.g., reused nightly tags).
+# Disable automatic tag fetching for the onyx remote to keep it lean
 git config remote.onyx.tagOpt --no-tags
-git fetch onyx --tags --force --no-recurse-submodules
+
+echo "Fetching ONLY the target tag $TARGET_TAG from onyx..."
+git fetch onyx "tag" "$TARGET_TAG" --no-recurse-submodules --force
 
 echo "Linking maintainer scripts to $TARGET_DIR/eea-artifacts..."
 # Create a symlink so the merge scripts can be called as eea-artifacts/scripts/...
@@ -45,10 +77,10 @@ ln -s "$MAINTAINER_DIR" "eea-artifacts"
 echo ""
 echo "Bootstrap complete!"
 echo "Target directory: $TARGET_DIR"
-echo "Upstream remote: onyx ($ONYX_REPO)"
+echo "Target Onyx tag: $TARGET_TAG"
 echo "Main branch: $MAIN_BRANCH"
 echo "Maintainer scripts linked at: $TARGET_DIR/eea-artifacts"
 echo ""
-echo "To start a merge, you can now run:"
+echo "To start the merge process, run:"
 echo "  cd $TARGET_DIR"
-echo "  python3 eea-artifacts/scripts/eea_merge_master.py <target_tag>"
+echo "  python3 eea-artifacts/scripts/eea_merge_master.py $TARGET_TAG"
