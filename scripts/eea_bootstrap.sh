@@ -34,8 +34,9 @@ git remote add onyx "$ONYX_REPO"
 echo "Fetching tags from upstream (without fetching all branches)..."
 # We fetch tags so they are available for merging.
 # To avoid fetching all branches, we use --no-tags in the remote config and fetch tags explicitly.
+# We use --force to overwrite any conflicting tags (e.g., reused nightly tags).
 git config remote.onyx.tagOpt --no-tags
-git fetch onyx --tags --no-recurse-submodules
+git fetch onyx --tags --force --no-recurse-submodules
 
 echo "Linking maintainer scripts to $TARGET_DIR/eea-artifacts..."
 # Create a symlink so the merge scripts can be called as eea-artifacts/scripts/...
