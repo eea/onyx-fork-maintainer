@@ -2,6 +2,24 @@
 
 This directory contains the Python scripts and prompt templates used for the **Self-Correcting Sequential Resolver** architecture. These scripts automate the process of merging an upstream Onyx release tag into the EEA fork while preserving customizations.
 
+## Bootstrapping the Environment
+
+Before you can run the merge scripts, you need to set up the EEA fork and the upstream Onyx repository. A bootstrap script is provided for this purpose.
+
+```bash
+# Run the bootstrap script from the scripts directory
+./scripts/eea_bootstrap.sh
+```
+
+This script will:
+1. Clone the EEA fork from `git@github.com:eea/danswer.git`.
+2. Check out the `eea` branch.
+3. Add the Onyx upstream as a remote named `onyx`.
+4. Fetch tags from the upstream repository.
+5. Create a symlink named `eea-artifacts` in the cloned repository pointing back to this maintainer repository.
+
+Once bootstrapped, you can `cd danswer-eea` and run the merge scripts as documented below.
+
 ## Prerequisites
 
 - **Python 3.x**: Required for all scripts.
