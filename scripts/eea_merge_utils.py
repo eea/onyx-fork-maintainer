@@ -13,13 +13,9 @@ VENV_PYTHON = os.path.join(TOOLS_DIR, "python_env", "bin", "python")
 # The root of the maintainer repository (where patches-overview.md lives)
 # is one level up from the scripts/ directory.
 ARTIFACTS_DIR = os.path.dirname(os.path.abspath(__file__))
-# Check if eea-artifacts exists as a directory (it might be a symlink)
-if os.path.exists("eea-artifacts") and os.path.isdir("eea-artifacts"):
-    ARTIFACTS_DIR = os.path.abspath("eea-artifacts")
-else:
-    # If eea-artifacts is not in CWD, assume it is the parent of the script
-    ARTIFACTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+# Check if the directory is run directly
+if os.path.basename(ARTIFACTS_DIR) == "scripts":
+    ARTIFACTS_DIR = os.path.dirname(ARTIFACTS_DIR)
 
 def ensure_venv():
     """Phase -1: Environment Bootstrap — isolated Python venv with pinned tools."""
@@ -167,7 +163,7 @@ def log_validation(filepath, attempt, validator, passed, message):
 
 
 def load_prompt_template(template_name):
-    """Load a prompt template from eea-artifacts/scripts/prompts/."""
+    """Load a prompt template from scripts/prompts/."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     template_path = os.path.join(script_dir, "prompts", template_name)
     with open(template_path, "r") as f:

@@ -94,7 +94,7 @@ To ensure the system is immune to Git conflicts in `package.json` or `pyproject.
 
 ### Phase 0: The Master Orchestrator (`eea_merge_master.py <tag>`)
 
-The entry point for the pipeline. All scripts live in `eea-artifacts/scripts/`. It takes the target Onyx upstream tag as a CLI parameter (e.g., `python eea-artifacts/scripts/eea_merge_master.py v2.12.1`) and coordinates the execution of all subsequent phases.
+The entry point for the pipeline. All scripts live in `scripts/`. It takes the target Onyx upstream tag as a CLI parameter (e.g., `python ../scripts/eea_merge_master.py v2.12.1`) and coordinates the execution of all subsequent phases.
 
 **CLI Parameters:**
 
@@ -116,7 +116,7 @@ The entry point for the pipeline. All scripts live in `eea-artifacts/scripts/`. 
 3. **Manifest Generation:** Identifies all `Unmerged` files via `git diff --name-only --diff-filter=U` and classifies each by conflict type (see Conflict Type Classification above).
 4. **Binary Detection:** Runs `git diff --numstat` to identify binary files (lines show as `-\t-`). These are immediately marked `requires_human` and excluded from AI processing.
 5. **Special File Detection:** Identifies `package.json`, `pyproject.toml`, lockfiles, and Alembic migrations. These are marked `programmatic_resolution` and handled by deterministic scripts, not the AI.
-6. **The Mapping Pass:** Makes a single LLM call (using a fast model) providing the list of _AI-resolvable_ conflicted files and the `eea-artifacts/patches-overview.md`. The LLM returns a JSON map linking each file to its relevant EEA Patch ID(s) or `null`.
+6. **The Mapping Pass:** Makes a single LLM call (using a fast model) providing the list of _AI-resolvable_ conflicted files and the `patches-overview.md`. The LLM returns a JSON map linking each file to its relevant EEA Patch ID(s) or `null`.
    - For `null`-mapped files (no documented patch), the resolution prompt will instruct the AI: _"No EEA patch documentation exists for this file. Prefer upstream changes. Preserve any lines clearly marked with `// EEA` or `# EEA` comments."_
 7. **State Initialization:** Creates `.eea_merge/state.json` setting all files to their initial status (`pending`, `requires_human`, or `programmatic_resolution`).
 8. **Summary Output:** Prints a conflict summary: total files, breakdown by type and resolution strategy, estimated LLM calls needed.
