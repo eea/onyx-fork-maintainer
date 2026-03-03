@@ -60,14 +60,20 @@ python ../scripts/eea_merge_init.py <target_tag> [--no-branch-switch]
 
 #### Phase 2: Resolve (`eea_merge_resolve.py`)
 The core resolution loop. It iterates over every conflicted file:
-1. **AI Resolution**: Files with documented patches or standard code are sent to the LLM.
-2. **Programmatic Resolution**: Special files like `package.json`, `pyproject.toml`, and Alembic migrations are handled by deterministic logic.
+1. **Programmatic Resolution**: Special files like `package.json`, `pyproject.toml`, and Alembic migrations are handled by deterministic logic.
+2. **AI Resolution**: Files with documented patches or standard code are sent to the LLM for text completion based on the patch context.
 3. **Self-Correction**: Resolutions are validated against linters (`ruff`, `yamllint`). If syntax is broken, the script feeds errors back to the AI for a retry.
 ```bash
 python ../scripts/eea_merge_resolve.py --smart-model gemini-3.1-pro-preview
 ```
 
-#### Phase 3-5: Integrate & Validate (`eea_merge_integrate.py`)
+#### Phase 3: Agentic Resolution (`eea_merge_agent.py`)
+For complex conflicts that cannot be solved by simple text completion (e.g., `deleted_by_them` where upstream refactored code to a new location, or files that repeatedly failed Phase 2), an autonomous agent is launched. The agent uses the `gemini` CLI in `--yolo` mode to actively search the codebase, find where the code was moved, apply the EEA customizations, and validate the result.
+```bash
+python ../scripts/eea_merge_agent.py --model gemini-3.1-pro-preview
+```
+
+#### Phase 4-6: Integrate & Validate (`eea_merge_integrate.py`)
 1. **Integration**: Copies verified resolutions from `.eea_merge/resolutions/` to the working tree and stages them (`git add`).
 2. **Validation**: Runs a full project build (Backend `ruff`, Frontend `npm install` & `tsc --noEmit`, Alembic chain check).
 3. **Commit**: If all checks pass and no files require human intervention, it creates the final merge commit.
@@ -84,7 +90,8 @@ python ../scripts/eea_merge_integrate.py <target_tag>
 | `eea_merge_master.py` | The main orchestrator (Entry Point). |
 | `eea_merge_init.py` | Phase 1: Environment setup, branching, and mapping. |
 | `eea_merge_resolve.py` | Phase 2: AI-driven and programmatic resolution loop. |
-| `eea_merge_integrate.py` | Phase 3-5: Integration, validation, and final commit. |
+| `eea_merge_agent.py` | Phase 3: Autonomous agent for solving complex refactors. |
+| `eea_merge_integrate.py` | Phase 4-6: Integration, validation, and final commit. |
 | `eea_merge_utils.py` | Shared utilities for Git commands, state, and LLM calls. |
 | `prompts/` | Directory containing `.txt` templates for LLM instructions. |
 

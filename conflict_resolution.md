@@ -147,7 +147,20 @@ Runs sequentially over every `pending` file in `state.json`:
    - If retries exhausted: marks as `failed_requires_human`.
 6. **Programmatic Resolutions:** After all AI files are processed, runs deterministic scripts for `programmatic_resolution` files (package.json, pyproject.toml, etc.).
 
-### Phase 3: Integration & Staging
+### Phase 3: Agentic Resolution (`eea_merge_agent.py`)
+
+For complex conflicts where simple text replacement fails, the orchestrator delegates the task to a fully autonomous AI agent.
+1. **Target Identification:** Scans `state.json` for files marked `requires_human` (e.g. `deleted_by_them` refactors) or `failed_requires_human` (failed all Phase 2 retries).
+2. **Agent Invocation:** Boots a headless `gemini` CLI subprocess in `--yolo` (autonomous) mode, providing it with an expansive `agentic_resolution_prompt.txt` that includes the EEA patch context.
+3. **Autonomous Execution:** The agent uses its own shell and file-editing tools to:
+   - Run `git status` and `git log` to understand the state.
+   - Use `grep` or `glob` searches to hunt down where upstream refactored missing code.
+   - Edit the newly located files to re-inject EEA customizations.
+   - Run local linters (`ruff check`, `npx tsc`) iteratively until syntax is correct.
+   - Run `git rm` or `git add` to clear the initial conflict.
+4. **Resolution:** If the agent succeeds, it marks the conflict `resolved_and_verified`. Otherwise, it remains flagged for actual human review.
+
+### Phase 4: Integration & Staging
 
 Resolved files are applied to the working tree and staged for commit. **No `git add` happens until this phase.**
 
@@ -155,7 +168,7 @@ Resolved files are applied to the working tree and staged for commit. **No `git 
 2. For files marked `requires_human`, leave them as-is (conflicted) in the working tree. Log them prominently.
 3. **Integrity check:** Run `git diff --check` to verify no conflict markers remain in any staged file.
 
-### Phase 4: Post-Merge Validation (Full-Project Build)
+### Phase 5: Post-Merge Validation (Full-Project Build)
 
 **This phase validates the merge at the project level**, catching semantic integration errors that per-file checks cannot detect (e.g., a changed function signature upstream breaking an EEA caller in a different, auto-merged file).
 
@@ -163,15 +176,15 @@ Resolved files are applied to the working tree and staged for commit. **No `git 
 2. **Frontend:** Run `cd web && npm install && npx tsc --noEmit` for a full TypeScript type-check.
 3. **Alembic:** Verify migration chain integrity (no broken `down_revision` pointers) with a script that walks the chain.
 4. **Results:**
-   - **All pass:** Proceed to Phase 5.
+   - **All pass:** Proceed to Phase 6.
    - **Any failure:** Log the errors. These might indicate auto-merged files that are semantically broken. The failures are appended to the human review list.
 
-### Phase 5: Commit or Abort
+### Phase 6: Commit or Abort
 
-1. **If no `failed_requires_human` files and Phase 4 passed:**
+1. **If no `failed_requires_human` files and Phase 5 passed:**
    - Run `git commit -m "Merge upstream tag <tag> (Automated AI Resolution)"`.
    - Exit 0 (success).
-2. **If any files need human intervention or Phase 4 failed:**
+2. **If any files need human intervention or Phase 5 failed:**
    - Do **NOT** commit.
    - Print a detailed report: which files failed, why, and the error logs.
    - Exit with a non-zero status code.
