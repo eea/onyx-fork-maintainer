@@ -58,7 +58,7 @@ def run_file_validation(filepath, content, attempt):
 
     if ext == ".py":
         out, err, ret = run_cmd(
-            [VENV_PYTHON, "-m", "ruff", "check", "--select=E9", res_path],
+            [VENV_PYTHON, "-m", "ruff", "check", "--isolated", "--select=E9", res_path],
             check=False
         )
         if ret != 0:
@@ -380,20 +380,20 @@ def main():
         with open(patch_doc_path, "r") as f:
             patches_content = f.read()
 
-    # Phase 2a: AI resolution for pending files (sequential, one at a time)
-    for filepath, entry in state.items():
-        if entry["status"] == "pending":
-            backup_file(filepath)
-            resolve_file(filepath, entry, patches_content, smart_model)
-            save_state(state)
-
-    # Phase 2b: Programmatic resolution for special files
+    # Phase 2a: Programmatic resolution for special files
     for filepath, entry in state.items():
         if entry["status"] == "programmatic_resolution":
             if programmatic_resolution(filepath, entry):
                 entry["status"] = "resolved_and_verified"
             else:
                 entry["status"] = "failed_requires_human"
+            save_state(state)
+
+    # Phase 2b: AI resolution for pending files (sequential, one at a time)
+    for filepath, entry in state.items():
+        if entry["status"] == "pending":
+            backup_file(filepath)
+            resolve_file(filepath, entry, patches_content, smart_model)
             save_state(state)
 
     # Summary
