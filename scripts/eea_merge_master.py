@@ -109,9 +109,18 @@ def main():
         print("Phase 2 failed. Aborting.")
         sys.exit(1)
 
-    # Execute Phase 3, 4, 5
+    # Execute Phase 3
+    agent_script = os.path.join(SCRIPT_DIR, "eea_merge_agent.py")
+    print("\n>>> Phase 3: Agentic Resolution for Complex Conflicts")
+    _, _, ret = run_cmd([sys.executable, agent_script, "--model", smart_model], 
+                        check=False, capture_output=False)
+    if ret != 0:
+        print("Phase 3 (Agent) failed. Aborting.")
+        sys.exit(1)
+
+    # Execute Phase 4, 5, 6
     integrate_script = os.path.join(SCRIPT_DIR, "eea_merge_integrate.py")
-    print("\n>>> Phase 3-5: Integration, Validation & Commit")
+    print("\n>>> Phase 4-6: Integration, Validation & Commit")
     _, _, ret = run_cmd([sys.executable, integrate_script, target_tag], check=False, capture_output=False)
     if ret != 0:
         # eea_merge_integrate.py prints its own detailed failure message
