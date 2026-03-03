@@ -9,14 +9,19 @@ if SCRIPT_DIR not in sys.path:
 from eea_merge_utils import run_cmd, check_gemini_available
 
 
-def preflight_checks(target_tag, no_branch_switch=False):
+def preflight_checks(target_tag, no_branch_switch=False, resume=False):
     print("Running pre-flight checks...")
 
     # 1. Clean working tree
-    out, _, _ = run_cmd(["git", "status", "--porcelain"])
-    if out.strip():
-        print("Error: Working tree is not clean. Please commit or stash your changes before upgrading.")
-        sys.exit(1)
+    if not resume:
+        out, _, _ = run_cmd(["git", "status", "--porcelain"])
+        # Filter out .eea_merge from dirty check
+        lines = [line for line in out.strip().split("\n") if line and ".eea_merge" not in line]
+        if lines:
+            print("Error: Working tree is not clean. Please commit or stash your changes before upgrading.")
+            for line in lines:
+                print(f"  {line}")
+            sys.exit(1)
 
     # 2. Source branch
     out, _, _ = run_cmd(["git", "branch", "--show-current"])
@@ -78,6 +83,13 @@ def main():
     dumb_model = args.dumb_model
     no_branch_switch = args.no_branch_switch
 
+    resume = False
+    state_file = ".eea_merge/state.json"
+    if os.path.exists(state_file):
+        print(f"Found existing merge state ({state_file}).")
+        print("Resuming merge process. Skipping Phase 1 (Init) and pre-flight clean tree check.")
+        resume = True
+
     # Create the full directory structure up front
     os.makedirs(".eea_merge/.tools", exist_ok=True)
     os.makedirs(".eea_merge/prompts", exist_ok=True)
@@ -85,20 +97,23 @@ def main():
     os.makedirs(".eea_merge/logs", exist_ok=True)
     os.makedirs(".eea_merge/backups", exist_ok=True)
 
-    preflight_checks(target_tag, no_branch_switch=no_branch_switch)
+    preflight_checks(target_tag, no_branch_switch=no_branch_switch, resume=resume)
     setup_environment()
 
-    # Execute Phase 1
-    init_script = os.path.join(SCRIPT_DIR, "eea_merge_init.py")
-    print(">>> Phase 1: Setup & Context Mapping")
-    init_cmd = [sys.executable, init_script, target_tag, "--dumb-model", dumb_model]
-    if no_branch_switch:
-        init_cmd.append("--no-branch-switch")
-    
-    _, _, ret = run_cmd(init_cmd, check=False, capture_output=False)
-    if ret != 0:
-        print("Phase 1 failed. Aborting.")
-        sys.exit(1)
+    if not resume:
+        # Execute Phase 1
+        init_script = os.path.join(SCRIPT_DIR, "eea_merge_init.py")
+        print(">>> Phase 1: Setup & Context Mapping")
+        init_cmd = [sys.executable, init_script, target_tag, "--dumb-model", dumb_model]
+        if no_branch_switch:
+            init_cmd.append("--no-branch-switch")
+        
+        _, _, ret = run_cmd(init_cmd, check=False, capture_output=False)
+        if ret != 0:
+            print("Phase 1 failed. Aborting.")
+            sys.exit(1)
+    else:
+        print(">>> Skipping Phase 1 (Init) due to resume.")
 
     # Execute Phase 2
     resolve_script = os.path.join(SCRIPT_DIR, "eea_merge_resolve.py")

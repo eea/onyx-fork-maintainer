@@ -115,11 +115,12 @@ def verify_alembic_chain():
                     for line in f:
                         stripped = line.strip()
                         if stripped.startswith("revision") and "=" in stripped and not stripped.startswith("down_revision"):
-                            # Parse: revision = "abc123"
-                            val = stripped.split("=", 1)[1].strip().strip("'\"")
+                            # Parse: revision = "abc123" # comment
+                            val = stripped.split("=", 1)[1].split("#", 1)[0].strip().strip("'\"")
                             revision_id = val
                         elif stripped.startswith("down_revision") and "=" in stripped:
-                            val = stripped.split("=", 1)[1].strip().strip("'\"")
+                            # Parse: down_revision = "abc123" # comment
+                            val = stripped.split("=", 1)[1].split("#", 1)[0].strip().strip("'\"")
                             if val in ("None", ""):
                                 down_revision = None
                             else:

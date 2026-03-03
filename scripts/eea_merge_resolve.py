@@ -324,8 +324,51 @@ def programmatic_resolution(filepath, state_entry):
                 f.write(out)
         return True
 
-    # --- pyproject.toml / requirements.txt: accept upstream + re-inject EEA deps ---
-    if filename in ("pyproject.toml", "requirements.txt") and merge_base:
+    # --- pyproject.toml: accept upstream + re-inject EEA deps ---
+    if filename == "pyproject.toml" and merge_base:
+        upstream_content, _, ret = run_cmd(["git", "show", f"MERGE_HEAD:{filepath}"], check=False)
+        if ret != 0:
+            print(f"  Warning: Could not read upstream version of {filepath}")
+            return False
+
+        eea_added = get_eea_specific_deps_python(filepath, merge_base)
+
+        if eea_added:
+            # Filter and clean up eea_added lines
+            clean_deps = []
+            for line in eea_added:
+                # We only want lines that look like "package==version" or similar
+                # and are within a dependency list (indented, quoted, maybe comma)
+                trimmed = line.strip().strip(",").strip("\"").strip("'")
+                if "==" in trimmed or ">=" in trimmed:
+                    clean_deps.append(trimmed)
+
+            if clean_deps:
+                lines = upstream_content.splitlines()
+                new_lines = []
+                injected = False
+                for line in lines:
+                    new_lines.append(line)
+                    # Inject into the first dependencies list (usually [project] dependencies)
+                    if not injected and "dependencies = [" in line:
+                        new_lines.append("    # EEA-specific dependencies (re-injected during merge)")
+                        for dep in clean_deps:
+                            # Avoid duplicates if upstream added the same dependency
+                            if f"\"{dep}\"" not in upstream_content and f"'{dep}'" not in upstream_content:
+                                new_lines.append(f'    "{dep}",')
+                        injected = True
+                
+                print(f"  Re-injected {len(clean_deps)} EEA-specific dependency(ies) into {filename}")
+                with open(res_path, "w") as f:
+                    f.write("\n".join(new_lines) + "\n")
+                return True
+
+        with open(res_path, "w") as f:
+            f.write(upstream_content)
+        return True
+
+    # --- requirements.txt: accept upstream + re-inject EEA deps ---
+    if filename == "requirements.txt" and merge_base:
         upstream_content, _, ret = run_cmd(["git", "show", f"MERGE_HEAD:{filepath}"], check=False)
         if ret != 0:
             print(f"  Warning: Could not read upstream version of {filepath}")
@@ -337,7 +380,7 @@ def programmatic_resolution(filepath, state_entry):
             content = upstream_content.rstrip("\n") + "\n"
             content += "\n# EEA-specific dependencies (re-injected during merge)\n"
             for line in eea_added:
-                content += line + "\n"
+                content += line.strip() + "\n"
             print(f"  Re-injected {len(eea_added)} EEA-specific line(s) into {filename}")
             with open(res_path, "w") as f:
                 f.write(content)
